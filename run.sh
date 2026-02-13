@@ -1,28 +1,20 @@
 #!/bin/bash
+echo "🐘 Starting Database Services..."
+sudo service postgresql start
+sleep 2
 
-# 1. Check PostgreSQL Service
-echo "🐘 Checking PostgreSQL..."
-if sudo service postgresql status > /dev/null; then
-    echo "✅ PostgreSQL is already running."
-else
-    echo "⚡ Starting PostgreSQL..."
-    sudo service postgresql start
-fi
+# Create Odoo DB role if it doesn't exist
+psql -h 127.0.0.1 -U postgres -c "CREATE USER odoo WITH PASSWORD 'odoo' SUPERUSER;" 2>/dev/null || \
+psql -h 127.0.0.1 -U postgres -c "ALTER USER odoo WITH PASSWORD 'odoo' SUPERUSER;"
 
-# 2. Check if Odoo is already running on port 8069
-echo "🌐 Checking for existing Odoo processes..."
+echo "🌐 Clearing Port 8069..."
 OS_PID=$(lsof -t -i:8069)
+[ ! -z "$OS_PID" ] && kill -9 $OS_PID
 
-if [ -z "$OS_PID" ]; then
-    echo "🚀 Starting Odoo 17..."
-    # We use the absolute path to the venv python to bypass manual activation
-    ./odoo-venv/bin/python odoo/odoo-bin -c odoo.conf
-else
-    echo "⚠️ Odoo is already running (PID: $OS_PID) on port 8069."
-    echo "Use 'kill $OS_PID' if you want to restart it."
-    
-    # Optional: Automatically show the URL for the running instance
-    echo "------------------------------------------------"
-    echo "URL: https://${CODESPACE_NAME}-8069.app.github.dev"
-    echo "------------------------------------------------"
-fi
+echo "🚀 Launching Odoo 17..."
+echo "------------------------------------------------"
+echo "MASTER PASSWORD: admin"
+echo "URL: https://${CODESPACE_NAME}-8069.app.github.dev"
+echo "------------------------------------------------"
+
+./odoo-venv/bin/python odoo/odoo-bin -c odoo.conf "$@"
